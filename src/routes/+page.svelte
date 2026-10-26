@@ -1,3 +1,23 @@
+<script lang="ts">
+  import { enhance } from "$app/forms";
+  let { form } = $props();
+
+  let dismissed = $state(false);
+  let copied = $state(false);
+
+  let firstError = $derived.by(() => {
+    if (!form || form.success || !form.errors) return undefined;
+    const entry = Object.entries(form.errors)[0];
+    return entry ? `${entry[0]} ${entry[1]}` : undefined;
+  });
+
+  async function copyKey() {
+    await navigator.clipboard.writeText(form.key);
+    copied = true;
+    setTimeout(() => (copied = false), 2000);
+  }
+</script>
+
 <svelte:head>
   <title>Dungeon Crawler Carl - Reference Dictionary</title>
   <meta
@@ -98,7 +118,7 @@ X-API-Key: your-key-here
 200 OK</pre>
     </section>
 
-    <section id="key" class="mx-auto max-w-5xl px-6 py-14">
+    <section id="key" class="relative mx-auto max-w-5xl px-6 py-14">
       <div class="rounded-2xl bg-[#f8f9fb] px-6 py-14 text-center">
         <h2 class="mb-5 text-3xl font-bold tracking-tight">
           Start in under a minute
@@ -107,11 +127,14 @@ X-API-Key: your-key-here
           Enter your email to get an API key. No payment required. The terms
           below are another matter.
         </p>
-        <!-- TODO: add /request-key route -->
+
         <form
           method="POST"
-          action="/request-key"
+          action="/"
           class="mx-auto flex max-w-md flex-col gap-3 sm:flex-row"
+          use:enhance={() => {
+            dismissed = false; // reopen the popup for each new submission
+          }}
         >
           <label for="email" class="sr-only">Email address</label>
           <input
@@ -131,6 +154,56 @@ X-API-Key: your-key-here
           </button>
         </form>
       </div>
+
+      {#if form && !dismissed}
+        <div
+          class="absolute inset-x-6 inset-y-14 z-10 flex items-center justify-center rounded-2xl bg-white/90 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-live="polite"
+        >
+          <div
+            class="w-full max-w-md rounded-xl border bg-white p-6 text-left shadow-lg
+      {form.success ? 'border-gray-200' : 'border-red-300'}"
+          >
+            {#if form.success}
+              <h3 class="mb-2 font-bold">Your API key</h3>
+              <div class="flex items-center gap-2">
+                <code
+                  class="flex-1 overflow-x-auto rounded-lg bg-[#14181f] px-3 py-2 font-mono text-sm text-emerald-200"
+                >
+                  {form.key}
+                </code>
+                <button
+                  type="button"
+                  onclick={copyKey}
+                  class="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold hover:border-[#c62828] hover:bg-[#c62828] hover:text-white"
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <p class="mt-3 text-sm text-gray-600">
+                Copy this key and store it somewhere safe. It cannot be
+                retrieved again.
+              </p>
+            {:else}
+              <h3 class="mb-2 font-bold text-[#c62828]">
+                Something went wrong
+              </h3>
+              <p class="text-sm text-gray-600">
+                {form.message}{#if firstError}: &nbsp;{firstError}{/if}
+              </p>
+            {/if}
+
+            <button
+              type="button"
+              onclick={() => (dismissed = true)}
+              class="mt-4 cursor-pointer rounded-lg border border-[#14181f] bg-[#14181f] px-4 py-2 text-sm font-semibold text-white hover:border-[#c62828] hover:bg-[#c62828]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      {/if}
     </section>
 
     <section class="mx-auto max-w-5xl px-6 pt-8 pb-14 font-elite">
